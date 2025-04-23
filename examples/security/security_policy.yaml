@@ -1,0 +1,45 @@
+# Security Policy Configuration
+
+# Default security level
+default_level: MEDIUM
+
+# Sensitivity thresholds for different data types
+sensitivity_thresholds:
+  personal_data: 0.8
+  financial_data: 0.9
+  health_data: 0.95
+  public_data: 0.2
+  business_data: 0.7
+
+# Protocol mappings for each security level
+protocol_mappings:
+  LOW:
+    - tls_1_3
+  MEDIUM:
+    - tls_1_3
+    - aes_256
+  HIGH:
+    - tls_1_3
+    - aes_256
+    - rsa_4096
+  CRITICAL:
+    - tls_1_3
+    - aes_256
+    - rsa_4096
+
+# Credential requirements for each security level
+credential_requirements:
+  LOW:
+    - basic_auth
+  MEDIUM:
+    - oauth2
+    - api_key
+  HIGH:
+    - oauth2
+    - api_key
+    - certificate
+  CRITICAL:
+    - oauth2
+    - api_key
+    - certificate
+    - mfa 
