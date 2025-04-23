@@ -1,178 +1,216 @@
-# OpenAI Agents SDK
+# Adaptive Security Mesh for MCP
 
-The OpenAI Agents SDK is a lightweight yet powerful framework for building multi-agent workflows. It is provider-agnostic, supporting the OpenAI Responses and Chat Completions APIs, as well as 100+ other LLMs.
+A dynamic security framework that automatically adjusts security measures based on real-time conditions and threat intelligence.
 
-<img src="https://cdn.openai.com/API/docs/images/orchestration.png" alt="Image of the Agents Tracing UI" style="max-height: 803px;">
+## Core Features
 
-### Core concepts:
+### 1. Adaptive Security Levels
+- Four-tier security classification (LOW, MEDIUM, HIGH, CRITICAL)
+- Dynamic adjustment based on:
+  - Message sensitivity
+  - Real-time threat intelligence
+  - Network conditions
+  - User context
 
-1. [**Agents**](https://openai.github.io/openai-agents-python/agents): LLMs configured with instructions, tools, guardrails, and handoffs
-2. [**Handoffs**](https://openai.github.io/openai-agents-python/handoffs/): A specialized tool call used by the Agents SDK for transferring control between agents
-3. [**Guardrails**](https://openai.github.io/openai-agents-python/guardrails/): Configurable safety checks for input and output validation
-4. [**Tracing**](https://openai.github.io/openai-agents-python/tracing/): Built-in tracking of agent runs, allowing you to view, debug and optimize your workflows
+### 2. Access Control
+- Role-based access control (RBAC)
+- Four access levels:
+  - PUBLIC
+  - INTERNAL
+  - CONFIDENTIAL
+  - RESTRICTED
+- Tool-specific access policies
+- Credential-based authentication
 
-Explore the [examples](examples) directory to see the SDK in action, and read our [documentation](https://openai.github.io/openai-agents-python/) for more details.
+### 3. Data Protection
+- Automatic data classification
+- Pattern-based sensitive data masking
+- Multi-level encryption
+- Access control metadata
 
-## Get started
+### 4. Threat Intelligence Integration
+- Multiple threat intelligence sources
+- Real-time threat level assessment
+- Dynamic security policy adjustment
 
-1. Set up your Python environment
+### 5. Protocol Management
+- Dynamic cryptographic protocol selection
+- Support for multiple protocols:
+  - TLS 1.3
+  - AES-256
+  - RSA-4096
+- Protocol strength matching to security level
 
-```
-python -m venv env
-source env/bin/activate
-```
+## Technical Implementation
 
-2. Install Agents SDK
-
-```
-pip install openai-agents
-```
-
-For voice support, install with the optional `voice` group: `pip install 'openai-agents[voice]'`.
-
-## Hello world example
-
-```python
-from agents import Agent, Runner
-
-agent = Agent(name="Assistant", instructions="You are a helpful assistant")
-
-result = Runner.run_sync(agent, "Write a haiku about recursion in programming.")
-print(result.final_output)
-
-# Code within the code,
-# Functions calling themselves,
-# Infinite loop's dance.
-```
-
-(_If running this, ensure you set the `OPENAI_API_KEY` environment variable_)
-
-(_For Jupyter notebook users, see [hello_world_jupyter.py](examples/basic/hello_world_jupyter.py)_)
-
-## Handoffs example
+### Core Components
 
 ```python
-from agents import Agent, Runner
-import asyncio
-
-spanish_agent = Agent(
-    name="Spanish agent",
-    instructions="You only speak Spanish.",
-)
-
-english_agent = Agent(
-    name="English agent",
-    instructions="You only speak English",
-)
-
-triage_agent = Agent(
-    name="Triage agent",
-    instructions="Handoff to the appropriate agent based on the language of the request.",
-    handoffs=[spanish_agent, english_agent],
-)
-
-
-async def main():
-    result = await Runner.run(triage_agent, input="Hola, ¿cómo estás?")
-    print(result.final_output)
-    # ¡Hola! Estoy bien, gracias por preguntar. ¿Y tú, cómo estás?
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+class SecurityMesh:
+    """Core security mesh implementation"""
+    def __init__(self, policy: SecurityPolicy):
+        self.policy = policy
+        self.classification_engine = ClassificationEngine()
+        self.protocol_manager = ProtocolManager()
+        self.credential_manager = CredentialManager()
+        self.threat_intelligence = ThreatIntelligenceManager()
+        self.security_features = SecurityFeatures(policy)
 ```
 
-## Functions example
+### Security Features Implementation
 
 ```python
-import asyncio
-
-from agents import Agent, Runner, function_tool
-
-
-@function_tool
-def get_weather(city: str) -> str:
-    return f"The weather in {city} is sunny."
-
-
-agent = Agent(
-    name="Hello world",
-    instructions="You are a helpful agent.",
-    tools=[get_weather],
-)
-
-
-async def main():
-    result = await Runner.run(agent, input="What's the weather in Tokyo?")
-    print(result.final_output)
-    # The weather in Tokyo is sunny.
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+class SecurityFeatures:
+    """Implementation of specific security features"""
+    def __init__(self, policy: SecurityPolicy):
+        self.policy = policy
+        self.tool_policies: Dict[str, ToolAccessPolicy] = {}
+        self._load_tool_policies()
 ```
 
-## The agent loop
+### Configuration Management
 
-When you call `Runner.run()`, we run a loop until we get a final output.
+```python
+@dataclass
+class SecurityConfig:
+    """Security configuration container"""
+    policy_file: Path
+    threat_intelligence_sources: List[str]
+    credential_stores: List[str]
+    protocol_registry: Dict[str, Dict]
+```
 
-1. We call the LLM, using the model and settings on the agent, and the message history.
-2. The LLM returns a response, which may include tool calls.
-3. If the response has a final output (see below for more on this), we return it and end the loop.
-4. If the response has a handoff, we set the agent to the new agent and go back to step 1.
-5. We process the tool calls (if any) and append the tool responses messages. Then we go to step 1.
+### Integration Points
 
-There is a `max_turns` parameter that you can use to limit the number of times the loop executes.
+```python
+class SecurityMiddleware:
+    """Middleware for integrating security mesh with MCP server"""
+    def __init__(self, config: SecurityConfig):
+        self.config = config
+        self.policy = load_security_policy(config)
+        self.security_mesh = SecurityMesh(self.policy)
+```
 
-### Final output
+## Key Technical Features
 
-Final output is the last thing the agent produces in the loop.
+### 1. Policy-Based Security
+- YAML-based configuration
+- Dynamic policy loading
+- Hierarchical security rules
 
-1.  If you set an `output_type` on the agent, the final output is when the LLM returns something of that type. We use [structured outputs](https://platform.openai.com/docs/guides/structured-outputs) for this.
-2.  If there's no `output_type` (i.e. plain text responses), then the first LLM response without any tool calls or handoffs is considered as the final output.
+### 2. Data Processing Pipeline
+- Input validation and sanitization
+- Output security processing
+- Automatic data classification
 
-As a result, the mental model for the agent loop is:
+### 3. Security Measures
+- Pattern-based sensitive data masking
+- Multi-level encryption
+- Access control metadata
+- Credential management
 
-1. If the current agent has an `output_type`, the loop runs until the agent produces structured output matching that type.
-2. If the current agent does not have an `output_type`, the loop runs until the current agent produces a message without any tool calls/handoffs.
+### 4. Integration Architecture
+- Middleware-based integration
+- Factory pattern for server creation
+- Asynchronous processing
+- Event-based security updates
 
-## Common agent patterns
+## Example Usage
 
-The Agents SDK is designed to be highly flexible, allowing you to model a wide range of LLM workflows including deterministic flows, iterative loops, and more. See examples in [`examples/agent_patterns`](examples/agent_patterns).
+```python
+# Create secure server
+server = create_secure_stdio_server(
+    params=server_params,
+    config_path=str(config_path),
+    name="Secure MCP Server"
+)
 
-## Tracing
+# Connect with security validation
+await server.connect()
 
-The Agents SDK automatically traces your agent runs, making it easy to track and debug the behavior of your agents. Tracing is extensible by design, supporting custom spans and a wide variety of external destinations, including [Logfire](https://logfire.pydantic.dev/docs/integrations/llms/openai/#openai-agents), [AgentOps](https://docs.agentops.ai/v1/integrations/agentssdk), [Braintrust](https://braintrust.dev/docs/guides/traces/integrations#openai-agents-sdk), [Scorecard](https://docs.scorecard.io/docs/documentation/features/tracing#openai-agents-sdk-integration), and [Keywords AI](https://docs.keywordsai.co/integration/development-frameworks/openai-agent). For more details about how to customize or disable tracing, see [Tracing](http://openai.github.io/openai-agents-python/tracing), which also includes a larger list of [external tracing processors](http://openai.github.io/openai-agents-python/tracing/#external-tracing-processors-list).
+# List tools with access control
+tools = await server.list_tools()
 
-## Development (only needed if you need to edit the SDK/examples)
+# Call tool with security validation
+result = await server.call_tool(
+    "example_tool",
+    {"input": "sensitive data"}
+)
+```
 
-0. Ensure you have [`uv`](https://docs.astral.sh/uv/) installed.
+## Configuration
 
+The security mesh is configured through YAML files:
+
+```yaml
+# Security Policy Configuration
+
+# Default security level
+default_level: MEDIUM
+
+# Sensitivity thresholds for different data types
+sensitivity_thresholds:
+  personal_data: 0.8
+  financial_data: 0.9
+  health_data: 0.95
+  public_data: 0.2
+  business_data: 0.7
+
+# Protocol mappings for each security level
+protocol_mappings:
+  LOW:
+    - tls_1_3
+  MEDIUM:
+    - tls_1_3
+    - aes_256
+  HIGH:
+    - tls_1_3
+    - aes_256
+    - rsa_4096
+  CRITICAL:
+    - tls_1_3
+    - aes_256
+    - rsa_4096
+
+# Credential requirements for each security level
+credential_requirements:
+  LOW:
+    - basic_auth
+  MEDIUM:
+    - oauth2
+    - api_key
+  HIGH:
+    - oauth2
+    - api_key
+    - certificate
+  CRITICAL:
+    - oauth2
+    - api_key
+    - certificate
+    - mfa
+```
+
+## Installation
+
+1. Clone the repository:
 ```bash
-uv --version
+git clone https://github.com/jahny44/AdaptiveMesh.git
+cd AdaptiveMesh
 ```
 
-1. Install dependencies
-
+2. Install dependencies:
 ```bash
-make sync
+pip install -r requirements.txt
 ```
 
-2. (After making changes) lint/test
+3. Configure security settings:
+- Copy `examples/security/config.yaml` to your project
+- Adjust settings according to your needs
 
-```
-make tests  # run tests
-make mypy   # run typechecker
-make lint   # run linter
-```
+## Contributing
 
-## Acknowledgements
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
-We'd like to acknowledge the excellent work of the open-source community, especially:
+## License
 
--   [Pydantic](https://docs.pydantic.dev/latest/) (data validation) and [PydanticAI](https://ai.pydantic.dev/) (advanced agent framework)
--   [MkDocs](https://github.com/squidfunk/mkdocs-material)
--   [Griffe](https://github.com/mkdocstrings/griffe)
--   [uv](https://github.com/astral-sh/uv) and [ruff](https://github.com/astral-sh/ruff)
-
-We're committed to continuing to build the Agents SDK as an open source framework so others in the community can expand on our approach.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
