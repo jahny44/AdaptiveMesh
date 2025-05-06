@@ -4,7 +4,8 @@ import abc
 import asyncio
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Dict, Optional
+from dataclasses import dataclass
 
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from mcp import ClientSession, StdioServerParameters, Tool as MCPTool, stdio_client
@@ -300,3 +301,19 @@ class MCPServerSse(_MCPServerWithClientSession):
     def name(self) -> str:
         """A readable name for the server."""
         return self._name
+
+
+@dataclass
+class MCPRequest:
+    """MCP request container"""
+    data: Dict[str, Any]
+    headers: Dict[str, str]
+    method: str
+    path: str
+
+@dataclass
+class MCPResponse:
+    """MCP response container"""
+    data: Dict[str, Any]
+    status: int
+    headers: Optional[Dict[str, str]] = None

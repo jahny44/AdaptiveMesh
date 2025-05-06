@@ -7,9 +7,27 @@ and the MCP server components.
 
 from typing import Dict, Any, Optional, Union
 from ..server import MCPRequest, MCPResponse
-from . import SecurityMesh, SecurityPolicy
-from .config import SecurityConfig, load_security_policy
-from pathlib import Path
+from .types import SecurityLevel, SecurityConfig
+from .mesh import SecurityMesh
+
+def load_security_policy(config: SecurityConfig) -> dict:
+    """Load security policy from configuration"""
+    # For now, return a basic policy
+    return {
+        "tools": {
+            "read_data": {
+                "required_level": "INTERNAL",
+                "required_roles": ["admin", "reader"],
+                "required_credentials": ["oauth2"],
+                "input_sensitivity": "MEDIUM",
+                "output_sensitivity": "MEDIUM"
+            }
+        },
+        "protocols": {
+            "tls_1_3": {"name": "TLS 1.3", "min_strength": 256},
+            "aes_256": {"name": "AES-256", "mode": "GCM", "key_length": 256}
+        }
+    }
 
 class SecurityMiddleware:
     """Middleware for integrating security mesh with MCP server"""
@@ -21,39 +39,19 @@ class SecurityMiddleware:
 
     async def process_request(self, request: MCPRequest) -> Optional[MCPResponse]:
         """Process incoming request through security mesh"""
-        # Evaluate security requirements
-        security_level = await self.security_mesh.evaluate_security(request.data)
-        
-        # Apply security measures
-        await self._apply_security_measures(request, security_level)
+        # Process input data
+        secured_data = await self.security_mesh.process_input(request.data)
+        request.data = secured_data
         
         return None  # Continue processing
 
     async def process_response(self, response: MCPResponse) -> MCPResponse:
         """Process outgoing response through security mesh"""
-        # Evaluate security requirements
-        security_level = await self.security_mesh.evaluate_security(response.data)
-        
-        # Apply security measures
-        await self._apply_security_measures(response, security_level)
+        # Process output data
+        secured_data = await self.security_mesh.process_output(response.data)
+        response.data = secured_data
         
         return response
-
-    async def _apply_security_measures(
-        self, 
-        message: Union[MCPRequest, MCPResponse], 
-        security_level: SecurityLevel
-    ) -> None:
-        """Apply appropriate security measures based on security level"""
-        # Select protocol
-        protocol = await self.security_mesh.protocol_manager.select_protocol(security_level)
-        
-        # Get required credentials
-        credentials = await self.security_mesh.credential_manager.get_credentials(security_level)
-        
-        # Apply protocol and credentials
-        message.security_protocol = protocol
-        message.credentials = credentials
 
 def create_security_middleware(config_path: str) -> SecurityMiddleware:
     """Factory function to create security middleware"""

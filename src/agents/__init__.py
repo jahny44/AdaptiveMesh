@@ -102,6 +102,15 @@ from .tracing import (
 from .usage import Usage
 from .version import __version__
 
+from .mcp.security import (
+    SecurityMesh,
+    SecurityPolicy,
+    SecurityLevel,
+    SecurityConfig,
+    SecurityFeatures,
+    AccessLevel
+)
+
 
 def set_default_openai_key(key: str, use_for_tracing: bool = True) -> None:
     """Set the default OpenAI API key to use for LLM requests (and optionally tracing(). This is
@@ -250,4 +259,10 @@ __all__ = [
     "gen_span_id",
     "default_tool_error_function",
     "__version__",
+    'SecurityMesh',
+    'SecurityPolicy',
+    'SecurityLevel',
+    'SecurityConfig',
+    'SecurityFeatures',
+    'AccessLevel'
 ]

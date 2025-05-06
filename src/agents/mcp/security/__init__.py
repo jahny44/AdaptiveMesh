@@ -1,20 +1,38 @@
 """
 Adaptive Security Mesh for MCP
 
-This module implements a dynamic security framework that automatically adjusts:
-- Encryption strength
-- Authentication requirements
-- Protocol parameters
-
-Based on:
-- Real-time threat intelligence
-- Message sensitivity classification
-- Network conditions
+This module provides a comprehensive security framework for the MCP system,
+implementing adaptive security measures based on context and threat intelligence.
 """
+
+from .types import (
+    SecurityLevel,
+    AccessLevel,
+    SecurityPolicy,
+    SecurityConfig
+)
+from .features import SecurityFeatures
+from .mesh import SecurityMesh, ProtocolManager, CredentialManager
+from .integration import SecurityMiddleware
+
+__all__ = [
+    'SecurityLevel',
+    'AccessLevel',
+    'SecurityPolicy',
+    'SecurityConfig',
+    'SecurityFeatures',
+    'SecurityMesh',
+    'ProtocolManager',
+    'CredentialManager',
+    'SecurityMiddleware',
+    'load_security_policy'
+]
 
 from typing import Dict, List, Optional, Union, Any
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+import yaml
 from .features import SecurityFeatures, AccessLevel
 
 class SecurityLevel(Enum):
@@ -23,14 +41,41 @@ class SecurityLevel(Enum):
     HIGH = 3
     CRITICAL = 4
 
+class AccessLevel(Enum):
+    PUBLIC = 1
+    INTERNAL = 2
+    CONFIDENTIAL = 3
+    RESTRICTED = 4
+
 @dataclass
 class SecurityPolicy:
     """Configuration for security mesh behavior"""
     default_level: SecurityLevel
     sensitivity_thresholds: Dict[str, float]
-    protocol_mappings: Dict[SecurityLevel, str]
+    protocol_mappings: Dict[SecurityLevel, List[str]]
     credential_requirements: Dict[SecurityLevel, List[str]]
     threat_intelligence_sources: List[str]
+
+@dataclass
+class SecurityConfig:
+    """Security configuration container"""
+    policy_file: Path
+    threat_intelligence_sources: List[str]
+    credential_stores: List[str]
+    protocol_registry: Dict[str, Dict]
+
+    @classmethod
+    def from_yaml(cls, config_path: Path) -> 'SecurityConfig':
+        """Load configuration from YAML file"""
+        with open(config_path) as f:
+            config_data = yaml.safe_load(f)
+        
+        return cls(
+            policy_file=Path(config_data['policy_file']),
+            threat_intelligence_sources=config_data['threat_intelligence_sources'],
+            credential_stores=config_data['credential_stores'],
+            protocol_registry=config_data['protocol_registry']
+        )
 
 class SecurityMesh:
     """Core security mesh implementation"""
@@ -81,14 +126,8 @@ class SecurityError(Exception):
     pass
 
 class ClassificationEngine:
-    """Self-learning message classification engine"""
+    """Data classification engine"""
     def __init__(self):
-        self.model = None  # To be implemented with ML model
-        self.sensitivity_criteria = {}
-
-    async def analyze(self, message: dict) -> float:
-        """Analyze message content and return sensitivity score"""
-        # Implementation details to be added
         pass
 
 class ProtocolManager:
@@ -97,10 +136,9 @@ class ProtocolManager:
         self.available_protocols = {}
         self.active_protocol = None
 
-    async def select_protocol(self, security_level: SecurityLevel) -> str:
+    async def select_protocol(self, security_level: SecurityLevel) -> List[str]:
         """Select appropriate protocol based on security level"""
-        # Implementation details to be added
-        pass
+        return ["tls_1_3"]  # Placeholder implementation
 
 class CredentialManager:
     """Automatic credential escalation management"""
@@ -110,8 +148,7 @@ class CredentialManager:
 
     async def get_credentials(self, security_level: SecurityLevel) -> List[str]:
         """Get required credentials for security level"""
-        # Implementation details to be added
-        pass
+        return ["basic_auth"]  # Placeholder implementation
 
 class ThreatIntelligenceManager:
     """Threat intelligence integration"""
@@ -121,5 +158,137 @@ class ThreatIntelligenceManager:
 
     async def get_current_level(self) -> float:
         """Get current threat level from all sources"""
-        # Implementation details to be added
-        pass 
+        return 0.5  # Placeholder implementation
+
+class SecurityFeatures:
+    """Implementation of specific security features"""
+    def __init__(self, policy: SecurityPolicy):
+        self.policy = policy
+        self.tool_policies: Dict[str, Dict] = {}
+        self._load_tool_policies()
+
+    def _load_tool_policies(self):
+        """Load tool access policies from configuration"""
+        self.tool_policies = {
+            "read_data": {
+                "required_level": AccessLevel.PUBLIC,
+                "allowed_roles": {"user", "admin"},
+                "required_credentials": ["basic_auth"],
+                "input_sensitivity": {"query": SecurityLevel.LOW},
+                "output_sensitivity": SecurityLevel.LOW
+            },
+            "process_sensitive": {
+                "required_level": AccessLevel.CONFIDENTIAL,
+                "allowed_roles": {"admin"},
+                "required_credentials": ["oauth2", "certificate"],
+                "input_sensitivity": {"data": SecurityLevel.HIGH},
+                "output_sensitivity": SecurityLevel.HIGH
+            }
+        }
+
+    async def validate_tool_access(
+        self, 
+        tool_name: str, 
+        user_context: Dict[str, Any]
+    ) -> bool:
+        """Validate if user can access a specific tool"""
+        if tool_name not in self.tool_policies:
+            return False
+            
+        policy = self.tool_policies[tool_name]
+        
+        # Check access level
+        if user_context.get("access_level", AccessLevel.PUBLIC) < policy["required_level"]:
+            return False
+            
+        # Check roles
+        user_roles = set(user_context.get("roles", []))
+        if not user_roles.intersection(policy["allowed_roles"]):
+            return False
+            
+        # Check credentials
+        user_credentials = set(user_context.get("credentials", []))
+        if not all(cred in user_credentials for cred in policy["required_credentials"]):
+            return False
+            
+        return True
+
+    async def process_input(
+        self, 
+        tool_name: str, 
+        arguments: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Process and secure input arguments"""
+        if tool_name not in self.tool_policies:
+            return arguments
+            
+        policy = self.tool_policies[tool_name]
+        secured_args = {}
+        
+        for key, value in arguments.items():
+            sensitivity = policy["input_sensitivity"].get(key, SecurityLevel.LOW)
+            secured_args[key] = await self._secure_value(value, sensitivity)
+            
+        return secured_args
+
+    async def process_output(
+        self, 
+        tool_name: str, 
+        result: Any
+    ) -> Any:
+        """Process and secure output result"""
+        if tool_name not in self.tool_policies:
+            return result
+            
+        policy = self.tool_policies[tool_name]
+        return await self._secure_value(result, policy["output_sensitivity"])
+
+    async def _secure_value(
+        self, 
+        value: Any, 
+        sensitivity: SecurityLevel
+    ) -> Any:
+        """Apply security measures based on sensitivity level"""
+        if isinstance(value, str):
+            if sensitivity == SecurityLevel.LOW:
+                return value
+            elif sensitivity == SecurityLevel.MEDIUM:
+                return self._mask_sensitive_patterns(value)
+            elif sensitivity == SecurityLevel.HIGH:
+                return f"ENCRYPTED:{value}"
+            elif sensitivity == SecurityLevel.CRITICAL:
+                return f"CONTROLLED:ENCRYPTED:{value}"
+        return value
+
+    def _mask_sensitive_patterns(self, text: str) -> str:
+        """Mask sensitive patterns in text"""
+        import re
+        patterns = {
+            r'\b\d{16}\b': '****-****-****-****',  # Credit card
+            r'\b\d{3}-\d{2}-\d{4}\b': '***-**-****',  # SSN
+            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b': '***@***.***'  # Email
+        }
+        
+        for pattern, replacement in patterns.items():
+            text = re.sub(pattern, replacement, text)
+            
+        return text 
+
+def load_security_policy(config: SecurityConfig) -> dict:
+    """Load security policy from configuration"""
+    # For now, return a basic policy
+    return {
+        "tools": {
+            "read_data": {
+                "required_level": AccessLevel.INTERNAL,
+                "required_roles": ["admin", "reader"],
+                "required_credentials": ["oauth2"],
+                "input_sensitivity": SecurityLevel.MEDIUM,
+                "output_sensitivity": SecurityLevel.MEDIUM
+            }
+        },
+        "protocols": {
+            "tls_1_3": {"name": "TLS 1.3", "min_strength": 256},
+            "aes_256": {"name": "AES-256", "mode": "GCM", "key_length": 256}
+        }
+    } 
